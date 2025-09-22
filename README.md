@@ -10,6 +10,7 @@ An Emacs package that provides seamless integration with the Auggie CLI, allowin
 
 - **Session Management**: Browse and resume existing auggie sessions with completion interface
 - **Org-Mode Integration**: Conversations formatted as org-mode documents with proper structure
+- **Visual Line Mode**: Automatic line wrapping for better readability of long responses
 - **Interactive Shell**: Type messages and get responses with RET, similar to a chat interface
 - **Input History**: Navigate through previous messages with M-p/M-n (like shell history)
 - **Streaming Responses**: Real-time display of responses as they arrive
@@ -114,7 +115,7 @@ The structure uses a simplified format where each exchange is a top-level headli
 
 When you run `M-x augment`, you get a completion interface showing:
 - "🆕 New Session" option at the top
-- Existing sessions formatted as: `[short-id]: [first-message]`
+- Existing sessions formatted as: `Augment [short-id]: [workspace-name]`
 - Supports both standard `completing-read` and Helm integration
 
 ### Automatic Org-Mode Formatting

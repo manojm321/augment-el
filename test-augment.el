@@ -68,7 +68,7 @@
 
   ;; Test buffer name generation with session ID
   (let ((augment-session-id "test-session-123456789"))
-    (let ((buffer-name (augment-create-buffer-name "Hello world")))
+    (let ((buffer-name (augment-create-buffer-name "/path/to/project")))
       (should (string-match-p "\\*Augment test-ses:" buffer-name))))
 
   ;; Test configurable new session message
@@ -299,27 +299,23 @@
   "Test buffer name creation."
   ;; Test without session ID
   (let ((augment-session-id nil))
-    (should (string= (augment-create-buffer-name "hello") "*Augment: hello*")))
+    (should (string= (augment-create-buffer-name "/path/to/project") "*Augment: project*")))
 
   ;; Test with session ID
   (let ((augment-session-id "test-session-123456789"))
-    (should (string= (augment-create-buffer-name "hello") "*Augment test-ses: hello*")))
+    (should (string= (augment-create-buffer-name "/path/to/project") "*Augment test-ses: project*")))
 
   ;; Test with short session ID
   (let ((augment-session-id "short"))
-    (should (string= (augment-create-buffer-name "hello") "*Augment: hello*")))
+    (should (string= (augment-create-buffer-name "/path/to/project") "*Augment: project*")))
 
-  ;; Test truncation without session ID
-  (let ((augment-session-id nil)
-        (long-message (make-string 100 ?x)))
-    (let ((buffer-name (augment-create-buffer-name long-message)))
-      ;; Should be truncated: "*Augment: " + truncated message + "*"
-      (should (< (length buffer-name) 70))
-      (should (string-suffix-p "...*" buffer-name)))))
+  ;; Test with nil workspace root
+  (let ((augment-session-id "test-session-123456789"))
+    (should (string= (augment-create-buffer-name nil) "*Augment test-ses: session*"))))
 
 (ert-deftest test-augment-buffer-creation ()
   "Test augment buffer creation and setup."
-  (let ((buffer (augment-create-shell-buffer "test-session-123" "test message")))
+  (let ((buffer (augment-create-shell-buffer "test-session-123" "/test/workspace")))
     (should (bufferp buffer))
     (with-current-buffer buffer
       (should (eq major-mode 'augment-mode))
@@ -372,10 +368,10 @@
 (ert-deftest test-augment-format-session-for-completion ()
   "Test session formatting for completion."
   (let ((session '((sessionId . "201ca9c4-d1f0-4c0a-80b4-12f264d1ca30")
-                   (firstUserMessage . "hello world test message"))))
+                   (workspaceRoot . "/Users/test/projects/my-project"))))
     (let ((formatted (augment-format-session-for-completion session)))
-      (should (string-match-p "201ca9c4:" formatted))
-      (should (string-match-p "hello world" formatted)))))
+      (should (string-match-p "Augment 201ca9c4:" formatted))
+      (should (string-match-p "my-project" formatted)))))
 
 (ert-deftest test-augment-get-session-buffer ()
   "Test finding session buffers."
@@ -429,7 +425,9 @@
     (should (eq major-mode 'augment-mode))
     (should (keymapp augment-mode-map))
     (should (where-is-internal 'augment-send-input augment-mode-map))
-    (should (where-is-internal 'augment-clear-input augment-mode-map))))
+    (should (where-is-internal 'augment-clear-input augment-mode-map))
+    ;; Test that visual-line-mode is enabled
+    (should visual-line-mode)))
 
 ;;; Session Creation Tests
 
@@ -493,12 +491,10 @@
         (should (string-match-p "Custom" command))
         (should (string-match-p " -q" command)))))
 
-  ;; Test with custom buffer name length
-  (let ((augment-buffer-name-max-length 20)
-        (long-message (make-string 50 ?x)))
-    (let ((buffer-name (augment-create-buffer-name long-message)))
-      (should (< (length buffer-name) 35)) ; "*Augment: " + 20 + "...*"
-      (should (string-suffix-p "...*" buffer-name)))))
+  ;; Test with workspace root (no truncation needed for directory names)
+  (let ((augment-session-id "test-session-123456789"))
+    (let ((buffer-name (augment-create-buffer-name "/very/long/path/to/project")))
+      (should (string= buffer-name "*Augment test-ses: project*")))))
 
 (ert-deftest test-augment-session-id-extraction ()
   "Test session ID extraction from auggie output."

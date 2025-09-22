@@ -278,14 +278,16 @@ org-mode formatting preferences."
 (defun augment-format-session-for-completion (session)
   "Format SESSION data for completion display."
   (let* ((session-id (alist-get 'sessionId session))
-         (first-message (alist-get 'firstUserMessage session))
-         (truncated-message (augment-truncate-string first-message 50))
+         (workspace-root (alist-get 'workspaceRoot session))
+         (workspace-name (if workspace-root
+                            (file-name-nondirectory (directory-file-name workspace-root))
+                          "unknown"))
          (short-id (if (and session-id (>= (length session-id) 8))
                        (substring session-id 0 8)
                      (or session-id "unknown"))))
-    (format "%s: %s"
+    (format "Augment %s: %s"
             short-id
-            truncated-message)))
+            workspace-name)))
 
 (defun augment-completing-read (prompt choices)
   "Use Helm if available, otherwise fall back to completing-read."
@@ -327,16 +329,17 @@ The new name will be formatted as *Augment SESSION-ID: NEW-NAME*."
     (rename-buffer formatted-name t)
     (message "Buffer renamed to: %s" formatted-name)))
 
-(defun augment-create-buffer-name (first-message)
-  "Create buffer name from FIRST-MESSAGE, including short session ID if available."
-  (let* ((truncated (augment-truncate-string first-message
-                                            augment-buffer-name-max-length))
+(defun augment-create-buffer-name (workspace-root)
+  "Create buffer name from WORKSPACE-ROOT, including short session ID if available."
+  (let* ((workspace-name (if workspace-root
+                            (file-name-nondirectory (directory-file-name workspace-root))
+                          "session"))
          (short-id (if (and augment-session-id (>= (length augment-session-id) 8))
                        (substring augment-session-id 0 8)
                      nil)))
     (if short-id
-        (format "*Augment %s: %s*" short-id truncated)
-      (format "*Augment: %s*" truncated))))
+        (format "*Augment %s: %s*" short-id workspace-name)
+      (format "*Augment: %s*" workspace-name))))
 
 (defun augment-insert-header (session-data)
   "Insert org-mode header with SESSION-DATA metadata."
@@ -362,9 +365,9 @@ The new name will be formatted as *Augment SESSION-ID: NEW-NAME*."
     (setq augment-input-start (point-marker))
     (set-marker-insertion-type augment-input-start nil)))
 
-(defun augment-create-shell-buffer (session-id first-message)
-  "Create new augment buffer with SESSION-ID and FIRST-MESSAGE."
-  (let* ((buffer-name (augment-create-buffer-name first-message))
+(defun augment-create-shell-buffer (session-id workspace-root)
+  "Create new augment buffer with SESSION-ID and WORKSPACE-ROOT."
+  (let* ((buffer-name (augment-create-buffer-name workspace-root))
          (buffer (get-buffer-create buffer-name)))
     (with-current-buffer buffer
       (augment-mode)
@@ -419,6 +422,7 @@ Key bindings:
 \\{augment-mode-map}"
   (setq-local org-startup-folded nil)
   (setq-local org-startup-truncated nil)
+  (visual-line-mode 1)
   (run-hooks 'augment-mode-hook))
 
 ;;; Interactive Functions
@@ -734,8 +738,10 @@ Key bindings:
                         (when (re-search-forward "#\\+SESSION_ID: pending" nil t)
                           (replace-match (format "#+SESSION_ID: %s" session-id))))
 
-                      ;; Rename buffer
-                      (let ((new-name (augment-create-buffer-name initial-message)))
+                      ;; Rename buffer using workspace root from session data
+                      (let* ((session-data (augment-get-session-data session-id))
+                             (workspace-root (alist-get 'workspaceRoot session-data))
+                             (new-name (augment-create-buffer-name workspace-root)))
                         (rename-buffer new-name t))
 
                       ;; Load input history
@@ -763,8 +769,8 @@ Key bindings:
      ;; Resume existing session
      (t
       (let* ((session-id (alist-get 'sessionId session))
-             (first-message (alist-get 'firstUserMessage session))
-             (buffer (augment-create-shell-buffer session-id first-message)))
+             (workspace-root (alist-get 'workspaceRoot session))
+             (buffer (augment-create-shell-buffer session-id workspace-root)))
         (with-current-buffer buffer
           (augment-setup-buffer session))
         (switch-to-buffer buffer))))))
