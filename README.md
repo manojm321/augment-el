@@ -2,6 +2,10 @@
 
 An Emacs package that provides seamless integration with the Auggie CLI, allowing you to interact with Augment Agent directly from within Emacs using org-mode formatted conversations.
 
+## Demo
+
+![Demo Video](demo.gif)
+
 ## Features
 
 - **Session Management**: Browse and resume existing auggie sessions with completion interface

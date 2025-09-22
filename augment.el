@@ -59,6 +59,8 @@ IMPORTANT: Always format your responses using org-mode syntax for proper display
 8. Use #+BEGIN_EXAMPLE and #+END_EXAMPLE for literal text blocks
 9. Structure your response with clear headlines and subheadings
 10. Never use markdown syntax - always use org-mode equivalents
+11. Enclose 'Tool result: view' in  #+BEGIN_SRC and #+END_SRC
+12. Enclose 'Tool result: str-replace-editor' in diff source block
 
 ** Examples of Correct Formatting:
 
@@ -197,16 +199,15 @@ org-mode formatting preferences."
     (augment-load-input-history))
 
   (when augment-input-history
-    (let ((current-input (augment-get-current-input)))
-      ;; If we're not navigating history yet, start from the end
-      (when (null augment-input-history-index)
-        (setq augment-input-history-index (length augment-input-history)))
+    ;; If we're not navigating history yet, start from the end
+    (when (null augment-input-history-index)
+      (setq augment-input-history-index (length augment-input-history)))
 
-      ;; Move to previous item if possible
-      (when (> augment-input-history-index 0)
-        (setq augment-input-history-index (1- augment-input-history-index))
-        (let ((history-item (nth augment-input-history-index augment-input-history)))
-          (augment-replace-current-input history-item))))))
+    ;; Move to previous item if possible
+    (when (> augment-input-history-index 0)
+      (setq augment-input-history-index (1- augment-input-history-index))
+      (let ((history-item (nth augment-input-history-index augment-input-history)))
+        (augment-replace-current-input history-item)))))
 
 (defun augment-history-next ()
   "Navigate to next input in history."
@@ -512,12 +513,12 @@ Key bindings:
   "Send MESSAGE to auggie CLI. Use -q flag if USE-QUICK-PROMPT is non-nil."
   (unless (augment-check-auggie-available)
     (augment-handle-error "Auggie CLI not found")
-    (return))
+    (cl-return))
 
   (when (and augment-session-id
              (not (augment-validate-session-id augment-session-id)))
     (augment-handle-error "Invalid session ID")
-    (return))
+    (cl-return))
 
   (let ((command (augment-build-command message use-quick-prompt)))
 
@@ -546,7 +547,7 @@ Key bindings:
     ;; Set up process filter for streaming output
     (set-process-filter
      process
-     (lambda (proc string)
+     (lambda (_proc string)
        (when (buffer-live-p buffer)
          (with-current-buffer buffer
            (setq output-buffer (concat output-buffer string))
@@ -564,7 +565,7 @@ Key bindings:
     ;; Set up process sentinel for completion
     (set-process-sentinel
      process
-     (lambda (proc event)
+     (lambda (_proc event)
        (when (buffer-live-p buffer)
          (with-current-buffer buffer
            ;; Clear the process reference
@@ -626,8 +627,7 @@ Key bindings:
       (beginning-of-line)
       (when (looking-at "^\\* \\[")
         ;; Replace the current input line with the user message
-        (let ((start (point)))
-          (forward-line 1)
+        (forward-line 1)
           (when (looking-at "^> ")
             (forward-line 1)
             ;; Delete any existing input after the prompt
@@ -636,7 +636,7 @@ Key bindings:
             (insert user-message "\n\n")
             ;; Insert the assistant response
             (insert assistant-response)
-            (insert "\n\n"))))))
+            (insert "\n\n")))))
 
   (run-hooks 'augment-response-hook)
   (when augment-auto-scroll
